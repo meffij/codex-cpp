@@ -1,5 +1,9 @@
 // codex_datatypes.h
-#include <vector>
+
+enum class Player {
+  Player1,
+  Player2,
+};
 
 enum class Color {
   Neutral,
@@ -12,6 +16,20 @@ enum class CardType {
   Spell,
   Building,
   Upgrade,
+};
+
+enum class EntityType {
+  Unit,
+  Hero,
+  Building,
+  Upgrade,
+};
+
+enum class TechLevel {
+  Tech0,
+  Tech1,
+  Tech2,
+  Tech3,
 };
 
 enum class Spec {
@@ -55,26 +73,155 @@ enum class Layer {
   SBATriggeredAbility,
 };
 
-enum class EffectType {
-  Triggered,
-  Layer,
+struct EffectDataNone {};
+
+enum class Ability {
+  // keyword abilities
+  Haste,
+  Readiness,
+  Overpower,
+  Sparkshot,
+  Stealth,
+  Flying,
+  AntiAir,
+  Invisible,
+  SwiftStrike,
+  // card specific abilities
+  BrickThiefAbility,
 };
 
-struct Effect {
-  EffectType type;
-  Layer layer;
+enum class CardSpecificAbility {
+  BrickThiefAbility,
 };
+
+typedef CardSpecificAbility CSAbility;
+
+enum class AbilityParam {
+  Resist,
+  Healing,
+  Obliterate,
+  Frenzy,
+};
+
+struct EffectParam {
+  AbilityParam ability;
+  int parameter;
+};
+
+typedef const variant<
+  EffectDataNone,
+  Ability,
+  EffectParam
+> EffectData;
+
+class Effect {
+  const int timestamp;
+  EffectData data;
+
+public:
+  Effect(Ability k, int t = 0) : timestamp(t),
+    data(EffectData {k}) {};
+  Effect(AbilityParam k, int p, int t = 0) : 
+    timestamp(t), data(EffectParam{k, p}) {};
+};
+
+enum class Subtype {
+  Buff,
+  Burn,
+  CuteAnimal,
+  Debuff,
+  Drunkard,
+  Flagbearer,
+  Mercenary,
+  Ninja,
+  Virtuoso,
+};
+
+template <class T>
+class EnumManager {
+  vector<T> v;
+  public:
+  EnumManager(std::initializer_list<T> i) : v(i) {};
+  bool contains(T i) {
+    auto result = std::find(std::begin(v), std::end(v), i);
+    if (result != std::end(v)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  bool contains(std::function<bool(T)> f) {
+    auto result = std::find_if(std::begin(v), std::end(v), f);
+    if (result != std::end(v)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+    
+};
+
+typedef EnumManager<Effect> EffectManager;
+typedef EnumManager<Subtype> SubtypeManager;
 
 struct CardData {
-  int card_id;
-  int cost;
-  CardType type;
-  int ATK;
-  int HP;
-  Spec spec;
-  Color color;
-  std::vector<Effect> printed_effects;
+  const int card_id;
+  const int cost;
+  const CardType type;
+  const int ATK;
+  const int HP;
+  const Spec spec;
+  const Color color;
+  const TechLevel techlevel;
+  const EffectManager effects;
+  const SubtypeManager subtypes;
 };
 
-// eventually build more detailed CardInfo with api to request it from card_id
-//  would contain strings with name, text, flavor text, etc
+struct CardInstance {
+  const CardData& cd;
+  const int card_unique_id;
+  const Player owner;
+};
+
+struct HeroData {
+  const int cost = 2;
+  const int ATK;
+  const int HP;
+  const int midband_level;
+  const int midband_ATK;
+  const int midband_HP;
+  const int maxband_level;
+  const int maxband_ATK;
+  const int maxband_HP;
+  EffectManager effects;
+  EffectManager midband_effects;
+  EffectManager maxband_effects;
+};
+struct HeroCardInstance {
+
+};
+
+struct UnitEntityData {
+  const optional<CardInstance> data;
+  int ATK;
+  int HP;
+  SubtypeManager subtypes;
+};
+
+struct HeroEntityData {
+  const HeroCardInstance data;
+  int ATK;
+  int HP;
+};
+
+
+typedef variant<UnitEntityData> EntityData;
+
+struct Entity {
+  int timestamp;
+  EntityType ty;
+  bool wasControlledAtStartOfTurn;
+  EffectManager effects;
+  EntityData data;
+};
