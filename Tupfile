@@ -1,0 +1,11 @@
+.gitignore
+
+clangflags = -std=c++1z -fno-strict-aliasing
+linkerflags = -lUnitTest++ -lpthread
+testflags = $(clangflags)
+testflags += -DRUN_UNIT_TESTS
+
+: codex.cpp |> clang++ %f $(testflags) $(linkerflags) -o %o \
+  |> codex
+
+: codex |> ./codex |>
