@@ -2,27 +2,59 @@
 namespace CodexCardData {
   const CardData TimelyMessenger {
     0, 1, CardType::Unit, 1, 1, Spec::None, Color::Neutral, TechLevel::Tech0,
-      { Effect(Ability::Haste) }, {Subtype::Mercenary}
+      { Ability::Haste }, 
+      { Subtype::Mercenary }
   };
 
   const CardData Tenderfoot {
     1, 1, CardType::Unit, 1, 2, Spec::None, Color::Neutral, TechLevel::Tech0,
-      {}, {Subtype::Virtuoso} 
+      {}, { Subtype::Virtuoso } 
   };
 
   const CardData OlderBrother {
     2, 2, CardType::Unit, 2, 2, Spec::None, Color::Neutral, TechLevel::Tech0,
-      {}, {Subtype::Drunkard} 
+      {}, { Subtype::Drunkard } 
   };
 
   const CardData BrickThief {
     3, 2, CardType::Unit, 2, 1, Spec::None, Color::Neutral, TechLevel::Tech0,
-      { Effect(Ability::BrickThiefAbility), 
-        Effect(AbilityParam::Resist, 1) }, {Subtype::Mercenary} 
+      { Ability::BrickThiefAbility, Ability::Resist }, 
+      { Subtype::Mercenary } 
   };
 
   const CardData HelpfulTurtle {
     4, 2, CardType::Unit, 1, 2, Spec::None, Color::Neutral, TechLevel::Tech0,
-      { Effect(AbilityParam::Healing, 1) }, {Subtype::CuteAnimal} 
+      { Ability::Healing }, 
+      { Subtype::CuteAnimal } 
+  };
+
+  const CardData GranfalloonFlagbearer {
+    5, 3, CardType::Unit, 2, 2, Spec::None, Color::Neutral, TechLevel::Tech0,
+      { Ability::FlagbearerAbility }, 
+      { Subtype::Flagbearer } 
+  };
+
+  const CardData FruitNinja {
+    6, 3, CardType::Unit, 2, 2, Spec::None, Color::Neutral, TechLevel::Tech0,
+      { Ability::Frenzy }, 
+      { Subtype::Ninja } 
+  };
+
+  const CardData Spark {
+    7, 1, CardType::Spell, 0, 0, Spec::None, Color::Neutral, TechLevel::Tech0,
+      { Ability::Deal1DamageToPatroller },
+      { Subtype::Burn } 
+  };
+
+  const CardData Bloom {
+    8, 2, CardType::Spell, 0, 0, Spec::None, Color::Neutral, TechLevel::Tech0,
+      { Ability::BloomEffect },
+      { Subtype::Buff } 
+  };
+
+  const CardData Wither {
+    9, 2, CardType::Spell, 0, 0, Spec::None, Color::Neutral, TechLevel::Tech0,
+      { Ability::WitherEffect },
+      { Subtype::Debuff } 
   };
 }

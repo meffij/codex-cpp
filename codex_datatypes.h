@@ -1,131 +1,44 @@
 // codex_datatypes.h
 
-enum class Player {
+enum class Player : bool {
   Player1,
   Player2,
 };
 
-enum class Color {
+enum class Color : uint8_t {
   Neutral,
   Red,
   Green,
 };
 
-enum class CardType {
+enum class CardType : uint8_t {
   Unit,
   Spell,
   Building,
   Upgrade,
 };
 
-enum class EntityType {
+enum class EntityType : uint8_t {
   Unit,
   Hero,
   Building,
   Upgrade,
 };
 
-enum class TechLevel {
+enum class TechLevel : uint8_t {
   Tech0,
   Tech1,
   Tech2,
   Tech3,
 };
 
-enum class Spec {
+enum class Spec : uint8_t {
   None,
   Bashing,
   Finesse,
   // more
 };
-
-// layer notes
-// this is how the "derived state" is arrived at
-// see http://forums.sirlingames.com/t/rules-questions-thread/146/216
-enum class Layer {
-  None,
-  // effects within layers always apply in timestamp order, there are
-  // no sublayers that are not enumerated here
-  PrintedValues,
-  // values printed on the card, or for tokens, on effect that made them
-  // Flipped Dancer token uses back of token card's values
-  // Heroes have 'printed' the ATK/HP of their current band and the abilities
-  //  up to and including their current band
-  // Whether entity is a Token or not is set at this layer
-  ChaosMirrorOrCopy,
-  // later effects in this layer see the results of applying earlier
-  //  effects in this layer
-  ValueSetting,
-  // i.e. Faerie Dragon
-  ValueIndependentAbility,
-  // Scavenger, Technician, and Lookout do not grant abilities
-  ValueModifying,
-  // i.e. runes, buff/debuff effects, cards in play
-  // order does not matter
-  ValueClamping,
-  // clamp negative values to 0
-  // Pestering Haunt's ability clamps its ATK to at most 1
-  ValueDependentAbility,
-  // Bluecoat Musketeer
-  // Behind the Ferns
-  
-  // Apply SBA after this is over
-  SBATriggeredAbility,
-};
-
-struct EffectDataNone {};
-
-enum class Ability {
-  // keyword abilities
-  Haste,
-  Readiness,
-  Overpower,
-  Sparkshot,
-  Stealth,
-  Flying,
-  AntiAir,
-  Invisible,
-  SwiftStrike,
-  // card specific abilities
-  BrickThiefAbility,
-};
-
-enum class CardSpecificAbility {
-  BrickThiefAbility,
-};
-
-typedef CardSpecificAbility CSAbility;
-
-enum class AbilityParam {
-  Resist,
-  Healing,
-  Obliterate,
-  Frenzy,
-};
-
-struct EffectParam {
-  AbilityParam ability;
-  int parameter;
-};
-
-typedef const variant<
-  EffectDataNone,
-  Ability,
-  EffectParam
-> EffectData;
-
-class Effect {
-  const int timestamp;
-  EffectData data;
-
-public:
-  Effect(Ability k, int t = 0) : timestamp(t),
-    data(EffectData {k}) {};
-  Effect(AbilityParam k, int p, int t = 0) : 
-    timestamp(t), data(EffectParam{k, p}) {};
-};
-
-enum class Subtype {
+enum class Subtype : uint8_t {
   Buff,
   Burn,
   CuteAnimal,
@@ -142,6 +55,7 @@ class EnumManager {
   vector<T> v;
   public:
   EnumManager(std::initializer_list<T> i) : v(i) {};
+  EnumManager() : v() {};
   bool contains(T i) {
     auto result = std::find(std::begin(v), std::end(v), i);
     if (result != std::end(v)) {
@@ -162,9 +76,10 @@ class EnumManager {
     
 };
 
-typedef EnumManager<Effect> EffectManager;
-typedef EnumManager<Subtype> SubtypeManager;
+using EffectManager = EnumManager<Effect>;
+using SubtypeManager = EnumManager<Subtype>;
 
+// these should all be static data in codex_card_data.h
 struct CardData {
   const int card_id;
   const int cost;
@@ -178,10 +93,24 @@ struct CardData {
   const SubtypeManager subtypes;
 };
 
-struct CardInstance {
-  const CardData& cd;
-  const int card_unique_id;
-  const Player owner;
+class CardInstance {
+  const CardData* cd;
+  int card_unique_id;
+  Player owner;
+public:
+  CardInstance(const CardData* cdd, const int cui, const Player o) :
+    cd(cdd), card_unique_id(cui), owner(o) {};
+  CardInstance(const CardData& cdd, const int cui, const Player o) :
+    cd(&cdd), card_unique_id(cui), owner(o) {};
+  /*
+  CardInstance(const CardInstance& other) :
+    cd(other.cd),
+    card_unique_id(other.card_unique_id),
+    owner(other.owner) {};
+  */
+  const CardData* getCardData() { return cd; };
+  int getCUID() { return card_unique_id; };
+  Player getOwner() { return owner; };
 };
 
 struct HeroData {
@@ -198,8 +127,15 @@ struct HeroData {
   EffectManager midband_effects;
   EffectManager maxband_effects;
 };
-struct HeroCardInstance {
 
+class HeroCardInstance {
+  const HeroData* hd;
+  Player owner;
+  int card_unique_id;
+public:
+  const HeroData* getHeroData() const { return hd; };
+  Player getOwner() const { return owner; };
+  int getCUID() const { return card_unique_id; };
 };
 
 struct UnitEntityData {
@@ -207,21 +143,124 @@ struct UnitEntityData {
   int ATK;
   int HP;
   SubtypeManager subtypes;
+  int damage;
 };
 
 struct HeroEntityData {
   const HeroCardInstance data;
   int ATK;
   int HP;
+  int damage;
+  int level;
 };
 
+struct BuildingEntityData {
+  int HP;
+  int damage;
+};
 
-typedef variant<UnitEntityData> EntityData;
+using EntityData = variant<
+                UnitEntityData, 
+                HeroEntityData,
+                BuildingEntityData
+>;
 
 struct Entity {
-  int timestamp;
+  Timestamp timestamp;
   EntityType ty;
-  bool wasControlledAtStartOfTurn;
+  Player controller;
   EffectManager effects;
   EntityData data;
+};
+
+struct TechBuilding {
+  int health;
+  // 0 or lower means ded
+  bool hasBeenConstructedBefore;
+  bool isBeingConstructed;
+};
+
+enum class Addon : uint8_t {
+  Tower,
+  Surplus,
+  HerosHall,
+  TechLab,
+};
+
+using Hand = vector<CardInstance>;
+using Discard = vector<CardInstance>;
+using Codex = vector<CardInstance>;
+
+class Deck {
+  vector<CardInstance> d;
+  bool topKnown;
+  public:
+  optional<CardInstance> draw(int which);
+  void add(CardInstance c) {
+    d.push_back(c);
+  };
+  Deck() = default;
+  Deck(vector<CardInstance> cards) {
+    d = cards;
+    topKnown = false;
+  };
+  auto begin() { return d.cbegin(); };
+  auto end() { return d.cend(); };
+};
+
+struct HeroSlot {
+  int cuid;
+  int turnsUntilPlayable;
+};
+
+struct PlayerData {
+  int baseHealth;
+  std::array<TechBuilding, 3> techBuildings;
+  std::array<HeroSlot, 3> heroSlots;
+  Hand hand;
+  Deck deck;
+  Discard discard;
+  Codex codex;
+  int gold;
+  Spec tech2Spec;
+  EffectManager effects;
+  int workers;
+  optional<Addon> addon;
+  int addonHealth;
+  bool addonBuiltThisTurn;
+};
+
+class EntityManager {
+  vector<Entity> e;
+};
+
+enum class Phase : uint8_t {
+  Tech,
+  Ready,
+  Upkeep,
+  Main,
+  DiscardDraw,
+  End,
+};
+
+using EffectQueue = std::deque<Effect>;
+
+class TimestampManager {
+  uint32_t current = 0;
+  public:
+  Timestamp next() {
+    current++;
+    return Timestamp(current);
+  };
+};
+
+class GameData {
+  std::array<PlayerData, 2> players;
+  Player activePlayer;
+  Phase currentPhase;
+  EntityManager entities;
+  optional<Player> winner;
+  EffectQueue q;
+public:
+  GameData StarterTest();  
 };

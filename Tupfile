@@ -1,11 +1,18 @@
 .gitignore
 
-clangflags = -std=c++1z -fno-strict-aliasing
-linkerflags = -lUnitTest++ -lpthread
+clangflags = -std=c++1z -fno-strict-aliasing -Wall
+linkerflags = 
 testflags = $(clangflags)
 testflags += -DRUN_UNIT_TESTS
+linkertestflags = $(linkerflags)
+linkertestflags += -lUnitTest++
 
-: codex.cpp |> clang++ %f $(testflags) $(linkerflags) -o %o \
-  |> codex
+: codex.cpp |> clang++ %f $(testflags) $(linkertestflags) -o %o \
+  |> codex_test
 
-: codex |> ./codex |>
+: codex_test |> ./codex_test |>
+
+emccflags = -I/home/nivlac/emscripten/include/ -L/home/nivlac/emscripten/lib/
+# : codex.cpp |> em++ codex.cpp $(clangflags) $(emccflags) -lUnitTest++ $(linkerflags) -o codex.js |> codex.js
+
+# : codex.cpp |> em++ codex.cpp $(testflags) $(emccflags) $(linkertestflags) -o codex_test.js |> codex_test.js
