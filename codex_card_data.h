@@ -57,4 +57,17 @@ namespace CodexCardData {
       { Ability::WitherEffect },
       { Subtype::Debuff } 
   };
+  const HeroData Troq {
+    2, Spec::Bashing, 2, 3, 5, 3, 4, 8, 4, 5, 
+      {},
+      { Ability::TroqMidband },
+      { Ability::Readiness }
+  };
+  const HeroData River {
+    2, Spec::Finesse, 2, 3, 3, 2, 4, 5, 3, 4,
+      {},
+      { Ability::RiverMidband },
+      { Ability::RiverMaxband },
+  };
+
 }

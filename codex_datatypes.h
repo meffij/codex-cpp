@@ -109,12 +109,13 @@ public:
     owner(other.owner) {};
   */
   const CardData* getCardData() { return cd; };
-  int getCUID() { return card_unique_id; };
+  int CUID() { return card_unique_id; };
   Player getOwner() { return owner; };
 };
 
 struct HeroData {
   const int cost = 2;
+  const Spec spec;
   const int ATK;
   const int HP;
   const int midband_level;
@@ -123,9 +124,9 @@ struct HeroData {
   const int maxband_level;
   const int maxband_ATK;
   const int maxband_HP;
-  EffectManager effects;
-  EffectManager midband_effects;
-  EffectManager maxband_effects;
+  const EffectManager effects;
+  const EffectManager midband_effects;
+  const EffectManager maxband_effects;
 };
 
 class HeroCardInstance {
@@ -171,6 +172,7 @@ struct Entity {
   Player controller;
   EffectManager effects;
   EntityData data;
+  bool exhausted;
 };
 
 struct TechBuilding {
@@ -254,13 +256,73 @@ class TimestampManager {
   };
 };
 
+struct EndGameAction {};
+
+struct DrawCardIndexAction {
+  Player player;
+  int which;
+};
+
+struct DrawCardCUIDAction {
+  Player player;
+  int cuid;
+};
+
+struct MakeWorker {
+  int cuid;
+};
+
+using Action = variant<
+  EndGameAction,
+  DrawCardIndexAction,
+  DrawCardCUIDAction,
+  MakeWorker
+>;
+
+template <typename T>
+std::function<T()> make_iter_lambda(vector<T>& vec, T tdefault = T()) {
+  int curr = 0;
+  auto vecIter = [tdefault, curr, &vec]() mutable {
+    if (curr >= vec.size()) {
+      return tdefault;
+    }
+    T temp = vec[curr];
+    curr++;
+    return temp;
+  };
+  return vecIter;
+};
+
+class ActionManager {
+  public:
+  std::function<Action()> nextAction;
+  ActionManager(std::function<Action()> na = [](){ return Action(EndGameAction{}); })
+    : nextAction(na) {};
+  ActionManager(vector<Action>& actions) : 
+  ActionManager(make_iter_lambda<Action>(actions, Action(EndGameAction{}))) {};
+};
+
 class GameData {
   std::array<PlayerData, 2> players;
   Player activePlayer;
   Phase currentPhase;
   EntityManager entities;
+  int turn;
   optional<Player> winner;
   EffectQueue q;
+  TimestampManager cuidgen;
+  TimestampManager tsGen;
+  ActionManager am;
+  PlayerData* playerData(Player p) {
+    if (p == Player::Player1) {
+      return &players[0];
+    } else {
+      return &players[1];
+    }
+  };
+  void setupSingleSpec(Spec spec, Player player);
 public:
-  GameData StarterTest();  
+  GameData(ActionManager amm = ActionManager {}) : am(amm) {};
+  static GameData SingleSpecGame(ActionManager am, Spec p1spec, Spec p2spec);
+  bool hasWinner() const { return static_cast<bool>(winner); };
 };

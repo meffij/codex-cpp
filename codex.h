@@ -5,7 +5,7 @@
 #include <tuple>
 #include <deque>
 #include <experimental/optional>
-#include <boost/variant/variant.hpp>
+#include <boost/variant.hpp>
 #include <algorithm>
 #include <functional>
 #include <stdint.h>
@@ -17,5 +17,4 @@ using std::tuple;
 
 #include "codex_effect.h"
 #include "codex_datatypes.h"
-
 #include "codex_card_data.h"

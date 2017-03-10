@@ -6,6 +6,8 @@ class Timestamp {
   Timestamp(uint32_t tt) : t(tt) {};
   Timestamp() : t(0) {};
   inline bool operator<(const Timestamp& tt) const { return t < tt.t; };
+  explicit operator int() const { return t; };
+  int asCUID() { return t; };
 };
 
 // layer notes
@@ -55,10 +57,15 @@ enum class Ability : uint8_t {
   AntiAir,
   Invisible,
   SwiftStrike,
+  Channeling,
   // card specific abilities
   BrickThiefAbility,
   BloomEffect,
   WitherEffect,
+  // hero abilities
+  TroqMidband,
+  RiverMidband,
+  RiverMaxband,
   // multi-card abilities
   FlagbearerAbility,
   Deal1DamageToPatroller,
@@ -74,7 +81,6 @@ enum class Ability : uint8_t {
   HeroLevelUpAbility,
   // player and whole-game "abilities"
   HasReshuffledThisMainPhase,
-  HasBuilt
 };
 
 // instead just make multiple copies of non-param abilities
