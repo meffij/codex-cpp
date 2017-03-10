@@ -8,31 +8,50 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
   let s:wipebuf = bufnr('%')
 endif
 set shortmess=aoO
-badd +0 codex.cpp
-badd +215 codex_datatypes.h
-badd +0 codex_effect.h
-badd +0 Tupfile
-badd +0 codex.h
-badd +0 codex_card_data.h
+badd +50 codex.cpp
+badd +207 codex_datatypes.h
+badd +1 codex_effect.h
+badd +13 Tupfile
+badd +1 codex.h
+badd +60 codex_card_data.h
 badd +5 ~/vimwiki/index.wiki
 badd +1 ~/vimwiki/vim\ sessions.wiki
+badd +3 codex_action.h
 argglobal
 silent! argdel *
 argadd codex.cpp
 set stal=2
 edit codex.cpp
 set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
 set nosplitbelow
 set nosplitright
 wincmd t
 set winheight=1 winwidth=1
+exe 'vert 1resize ' . ((&columns * 85 + 85) / 170)
+exe 'vert 2resize ' . ((&columns * 84 + 85) / 170)
 argglobal
-let s:l = 25 - ((17 * winheight(0) + 24) / 48)
+let s:l = 69 - ((33 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-25
-normal! 020|
+69
+normal! 041|
+wincmd w
+argglobal
+edit codex.cpp
+let s:l = 52 - ((1 * winheight(0) + 23) / 47)
+if s:l < 1 | let s:l = 1 | endif
+exe s:l
+normal! zt
+52
+normal! 010|
+wincmd w
+exe 'vert 1resize ' . ((&columns * 85 + 85) / 170)
+exe 'vert 2resize ' . ((&columns * 84 + 85) / 170)
 tabedit codex_datatypes.h
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -43,28 +62,54 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winheight=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 85 + 85) / 170)
-exe 'vert 2resize ' . ((&columns * 84 + 85) / 170)
+exe 'vert 1resize ' . ((&columns * 84 + 85) / 170)
+exe 'vert 2resize ' . ((&columns * 85 + 85) / 170)
 argglobal
-let s:l = 215 - ((23 * winheight(0) + 23) / 47)
+let s:l = 279 - ((39 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-215
-normal! 026|
+279
+normal! 012|
 wincmd w
 argglobal
 edit codex.cpp
-let s:l = 25 - ((24 * winheight(0) + 23) / 47)
+let s:l = 131 - ((36 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-25
-normal! 020|
+131
+normal! 033|
 wincmd w
-exe 'vert 1resize ' . ((&columns * 85 + 85) / 170)
-exe 'vert 2resize ' . ((&columns * 84 + 85) / 170)
-tabedit Tupfile
+exe 'vert 1resize ' . ((&columns * 84 + 85) / 170)
+exe 'vert 2resize ' . ((&columns * 85 + 85) / 170)
+tabedit codex_datatypes.h
+set splitbelow splitright
+set nosplitbelow
+set nosplitright
+wincmd t
+set winheight=1 winwidth=1
+argglobal
+let s:l = 258 - ((30 * winheight(0) + 24) / 48)
+if s:l < 1 | let s:l = 1 | endif
+exe s:l
+normal! zt
+258
+normal! 0
+tabedit codex_effect.h
+set splitbelow splitright
+set nosplitbelow
+set nosplitright
+wincmd t
+set winheight=1 winwidth=1
+argglobal
+let s:l = 60 - ((13 * winheight(0) + 24) / 48)
+if s:l < 1 | let s:l = 1 | endif
+exe s:l
+normal! zt
+60
+normal! 013|
+tabedit codex_card_data.h
 set splitbelow splitright
 wincmd _ | wincmd |
 vsplit
@@ -77,50 +122,24 @@ set winheight=1 winwidth=1
 exe 'vert 1resize ' . ((&columns * 85 + 85) / 170)
 exe 'vert 2resize ' . ((&columns * 84 + 85) / 170)
 argglobal
-let s:l = 14 - ((13 * winheight(0) + 23) / 47)
+let s:l = 67 - ((20 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-14
-normal! 0
+67
+normal! 021|
 wincmd w
 argglobal
-edit Tupfile
-let s:l = 13 - ((11 * winheight(0) + 23) / 47)
+edit codex_datatypes.h
+let s:l = 129 - ((35 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-13
-normal! 028|
+129
+normal! 08|
 wincmd w
 exe 'vert 1resize ' . ((&columns * 85 + 85) / 170)
 exe 'vert 2resize ' . ((&columns * 84 + 85) / 170)
-tabedit codex_effect.h
-set splitbelow splitright
-set nosplitbelow
-set nosplitright
-wincmd t
-set winheight=1 winwidth=1
-argglobal
-let s:l = 77 - ((44 * winheight(0) + 24) / 48)
-if s:l < 1 | let s:l = 1 | endif
-exe s:l
-normal! zt
-77
-normal! 010|
-tabedit codex_card_data.h
-set splitbelow splitright
-set nosplitbelow
-set nosplitright
-wincmd t
-set winheight=1 winwidth=1
-argglobal
-let s:l = 1 - ((0 * winheight(0) + 24) / 48)
-if s:l < 1 | let s:l = 1 | endif
-exe s:l
-normal! zt
-1
-normal! 0
 tabedit codex.h
 set splitbelow splitright
 set nosplitbelow
@@ -128,12 +147,12 @@ set nosplitright
 wincmd t
 set winheight=1 winwidth=1
 argglobal
-let s:l = 4 - ((3 * winheight(0) + 24) / 48)
+let s:l = 8 - ((7 * winheight(0) + 24) / 48)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-4
-normal! 016|
+8
+normal! 027|
 tabnext 2
 set stal=1
 if exists('s:wipebuf')
