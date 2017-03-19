@@ -1,4 +1,4 @@
-#include "codex.h"
+#include "codex_card_data.h"
 #include <UnitTest++/UnitTest++.h>
 #include <iostream>
 #include <algorithm>
@@ -19,7 +19,7 @@ inline constexpr Color colorOfSpec(Spec s) {
   };
 };
 
-optional<CardInstance> Deck::draw(int which) {
+optional<CardInstance> Deck::draw(uint32_t which) {
   if (topKnown) {
     CardInstance temp = d[0];
     topKnown = false;
@@ -34,7 +34,7 @@ optional<CardInstance> Deck::draw(int which) {
   return optional<CardInstance>();
 };
 
-Deck starterDeck(Player p, std::function<int()> inc) {
+Deck starterDeck(Player p, std::function<uint32_t()> inc) {
   Deck d;
   d.add(CardInstance(CodexCardData::TimelyMessenger, inc(), p));
   d.add(CardInstance(CodexCardData::Tenderfoot, inc(), p));
@@ -49,6 +49,204 @@ Deck starterDeck(Player p, std::function<int()> inc) {
   return d;
 };
 
+ProcessResult GameData::calculateDerivedState() {
+  class layer1visitor : boost::static_visitor<> {
+    /*
+    template <typename T>
+    void operator()(T& t) { return; };
+    
+    template <>
+    void operator()(UnitEntityData& d) { return; };
+    */
+  };
+  return NoError{};
+}
+
+ProcessResult GameData::processSBA() {
+    // if 2 legendary things with same name, discard one
+    // tokens not in the future or in play are trashed
+    // heroes in the discard go to the command zone and go on cooldown
+    // players with no base lose the game
+    // effects that have expired stop applying -- ???
+    // cancel +1/+1 and -1/-1 runes
+    // deathtouch or lethal damage kills buildings/units/heroes,
+    //  hero death bonus levels trigger
+    // abilities that trigger on a condition trigger (i.e. Hardened Mox)
+  return NoError{};
+}
+
+ProcessResult GameData::processEffectQueue() {
+  if (q.empty()) {
+    return NoError{};
+  } else {
+    return UnimplementedError {};
+  }
+}
+
+class mainphase_action_visitor 
+  : public boost::static_visitor<ProcessResult> {
+public:
+  GameData* gd;
+  mainphase_action_visitor(GameData* gdd) : gd(gdd) {};
+
+  ProcessResult operator()(EndOfCurrentActions& e) {
+    return NoError{};
+  };
+  ProcessResult operator()(ForfeitAction& f) {
+    if (f.p == Player::Player1) {
+      gd->winner = Player::Player2;
+      return NoError{};
+    } else {
+      gd->winner = Player::Player1;
+      return NoError{};
+    }
+  };
+  ProcessResult operator()(DrawCardIndexAction& d) {
+    PlayerData* pd = gd->playerData(d.player);
+    optional<CardInstance> c = pd->deck.draw(d.which);
+    if (c) {
+      // move CardInstance to hand
+      pd->hand.push_back(*c);
+      return gd->processActions();
+    } else {
+      return DrawCardIndexCardNotFound {};
+    }
+  };
+  ProcessResult operator()(DrawCardCUIDAction& d) {
+    return UnimplementedError{};
+  };
+  ProcessResult operator()(MakeWorker& m) {
+    PlayerData* p = gd->playerData(gd->activePlayer);
+    Hand h = p->hand;
+    auto c = std::find_if(h.begin(), h.end(), 
+        [m](CardInstance c){ return c.CUID() == m.cuid; });
+    if (c == h.end()) {
+      return MakeWorkerCardNotFound {};
+    }
+    if (p->gold < 1) {
+      return MakeWorkerNotEnoughGold {};
+    }
+    p->gold -= 1;
+    p->workers++;
+    h.erase(c);
+    return gd->processActions();
+  };
+
+  ProcessResult playCard(CardInstance c) {
+    PlayerData* p = gd->playerData(gd->activePlayer);
+    Hand h = p->hand;
+    if (p->gold < c.getCost()) {
+      return PlayCardFromHandNotEnoughGold {};
+    }
+    p->gold -= c.getCost();
+    // create new entity
+    Entity e {
+      gd->tsGen.next(),
+      gd->activePlayer,
+      {},
+      UnitEntityData {
+        c, 0, 0, {}, 0
+      },
+      false
+    };
+    return NoError {};
+  };
+
+  ProcessResult operator()(PlayCardFromHand& a) {
+    PlayerData* p = gd->playerData(gd->activePlayer);
+    Hand h = p->hand;
+    auto ci = std::find_if(h.begin(), h.end(), 
+        [a](CardInstance c){ return c.CUID() == a.cuid; });
+    if (ci == h.end()) {
+      return PlayCardFromHandCardNotFound {};
+    }
+    CardInstance c = *ci;
+    return playCard(c);
+  };
+  ProcessResult operator()(PlayCardFromHandWithName& a) {
+    PlayerData* p = gd->playerData(gd->activePlayer);
+    Hand h = p->hand;
+    auto ci = std::find_if(h.begin(), h.end(), 
+        [a](CardInstance c){ return c.name() == a.name; });
+    if (ci == h.end()) {
+      return PlayCardFromHandCardNotFound {};
+    }
+    CardInstance c = *ci;
+    return playCard(c);
+  };
+  ProcessResult operator()(EndMainPhase& e) {
+    gd->currentPhase = Phase::DiscardDraw;
+    return NoError {};
+  };
+  ProcessResult operator()(TechCard& t) {
+    return IncorrectTimingError {};
+  };
+  /*
+  template <typename T>
+  ProcessResult operator()(T& a) {
+    return UnimplementedError {};
+  };
+  */
+};
+
+class unimplemented_action_visitor 
+  : public boost::static_visitor<ProcessResult> {
+public:
+  template <typename T>
+  ProcessResult operator()(T& a) {
+    return UnimplementedError {};
+  };
+};
+
+
+ProcessResult GameData::processActions() {
+  if (currentPhase != Phase::Main) {
+    // process stuff till we get there
+    if (currentPhase == Phase::Tech) {
+      if (turn > 2) {
+        // process tech action
+      }
+      currentPhase = Phase::Ready;
+      return processActions();
+    }
+    if (currentPhase == Phase::Ready) {
+      // untap stuff
+      currentPhase = Phase::Upkeep;
+      return processActions();
+    }
+    if (currentPhase == Phase::Upkeep) {
+      // trigger upkeep stuff
+      currentPhase = Phase::Main;
+      return processActions();
+    }
+    if (currentPhase == Phase::DiscardDraw) {
+      // do discard-draw
+      Hand h = playerData(activePlayer)->hand;
+      std::for_each(h.begin(), h.end(), [this](CardInstance c){ 
+          playerData(activePlayer)->discard.push_back(c);
+      });
+      int s = h.size();
+      s += 2;
+      if (s > 5) { s = 5; }
+      h.clear();
+      // draw s cards
+      currentPhase = Phase::End;
+      return processActions();
+    }
+    if (currentPhase == Phase::End) {
+      // do end step stuff
+      currentPhase = Phase::Main;
+      return processActions();
+    }
+  }
+  if (!q.empty()) {
+    // process action queue
+  }
+  mainphase_action_visitor av = mainphase_action_visitor(this);
+  auto na = am.nextAction();
+  return boost::apply_visitor(av, na);
+};
+
 GameData GameData::SingleSpecGame(ActionManager am, Spec p1spec, Spec p2spec) {
   GameData g {am};
   g.turn = 1;
@@ -60,13 +258,14 @@ GameData GameData::SingleSpecGame(ActionManager am, Spec p1spec, Spec p2spec) {
   g.playerData(Player::Player2)->workers = 5;
   g.setupSingleSpec(p1spec, Player::Player1);
   g.setupSingleSpec(p2spec, Player::Player2);
+  g.processActions();
   return g;
 };
 
 void GameData::setupSingleSpec(Spec spec, Player player) {
   PlayerData* p = playerData(player);
   p->baseHealth = 20;
-  int heroCUID = cuidgen.next().asCUID();
+  CUID heroCUID = cuidgen.next().asCUID();
   p->heroSlots[0].cuid = heroCUID;
   p->heroSlots[0].turnsUntilPlayable = 0;
   if (spec == Spec::Bashing || spec == Spec::Finesse) {
@@ -99,7 +298,7 @@ TEST(deck) {
   Deck d = starterDeck(Player::Player1, [&t](){ return t.next().asCUID(); });
   auto b = d.begin();
   auto e = d.end();
-  vector<int> cuids;
+  vector<CUID> cuids;
   std::for_each(b, e, [&cuids](auto card){ cuids.push_back(card.CUID()); });
   for(int i = 0; i < 10; i++) {
     CHECK_EQUAL(cuids[i], i + 1);
@@ -109,7 +308,15 @@ TEST(deck) {
 TEST(starter) {
   ActionManager am {};
   GameData g = GameData::SingleSpecGame(am, Spec::Bashing, Spec::Finesse);
-  // Deck d = g.players[0].deck;
+  // make worker
+  // play unit
+  // play hero
+  // play spell
+  // attack base
+  // attack patroller
+  // build add-on
+  // destroy add-on, base takes 2
+  // destroy hero, opposing hero gains 2 levels
 };
 
 TEST(herodata) {
@@ -125,10 +332,9 @@ TEST(actionManager) {
   vector<Action> act {DrawCardIndexAction{Player::Player1, 2},
                     DrawCardCUIDAction{Player::Player2, 3}};
   ActionManager am2 { act };
-  CHECK(am2.nextAction().which() == 1);
-  CHECK(am2.nextAction().which() == 2);
-  CHECK(am2.nextAction().which() == 0);
-  Action a2 = boost::get<EndGameAction>(am2.nextAction());
+  boost::get<DrawCardIndexAction>(am2.nextAction());
+  boost::get<DrawCardCUIDAction>(am2.nextAction());
+  boost::get<EndOfCurrentActions>(am2.nextAction());
 };
 
 #endif

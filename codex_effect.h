@@ -1,13 +1,15 @@
 // codex_effect.h
+#pragma once
+#include "codex.h"
 
 class Timestamp {
-  const uint32_t t;
+  uint32_t t;
   public:
   Timestamp(uint32_t tt) : t(tt) {};
   Timestamp() : t(0) {};
   inline bool operator<(const Timestamp& tt) const { return t < tt.t; };
   explicit operator int() const { return t; };
-  int asCUID() { return t; };
+  CUID asCUID() { return t; };
 };
 
 // layer notes
@@ -74,6 +76,9 @@ enum class Ability : uint8_t {
   Healing,
   Obliterate,
   Frenzy,
+  // runes
+  Plus1Plus1Rune,
+  Minus1Minus1Rune,
   // game-rule "abilities"
   AttackedThisTurn,
   AttackAbility,

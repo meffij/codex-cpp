@@ -1,6 +1,6 @@
 .gitignore
 
-clangflags = -std=c++1z -fno-strict-aliasing -Wall
+clangflags = -std=c++1z -Wall -Wno-int-conversions
 linkerflags = 
 testflags = $(clangflags)
 testflags += -DRUN_UNIT_TESTS

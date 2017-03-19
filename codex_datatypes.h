@@ -1,4 +1,6 @@
 // codex_datatypes.h
+#pragma once
+#include "codex_effect.h"
 
 enum class Player : bool {
   Player1,
@@ -45,8 +47,10 @@ enum class Subtype : uint8_t {
   Debuff,
   Drunkard,
   Flagbearer,
+  Legendary,
   Mercenary,
   Ninja,
+  Ultimate,
   Virtuoso,
 };
 
@@ -81,11 +85,12 @@ using SubtypeManager = EnumManager<Subtype>;
 
 // these should all be static data in codex_card_data.h
 struct CardData {
-  const int card_id;
-  const int cost;
+  const char* name;
+  const uint32_t card_id;
+  const uint32_t cost;
   const CardType type;
-  const int ATK;
-  const int HP;
+  const uint32_t ATK;
+  const uint32_t HP;
   const Spec spec;
   const Color color;
   const TechLevel techlevel;
@@ -95,35 +100,37 @@ struct CardData {
 
 class CardInstance {
   const CardData* cd;
-  int card_unique_id;
+  CUID cuid;;
   Player owner;
 public:
-  CardInstance(const CardData* cdd, const int cui, const Player o) :
-    cd(cdd), card_unique_id(cui), owner(o) {};
-  CardInstance(const CardData& cdd, const int cui, const Player o) :
-    cd(&cdd), card_unique_id(cui), owner(o) {};
+  CardInstance(const CardData* cdd, const CUID id, const Player o) :
+    cd(cdd), cuid(id), owner(o) {};
+  CardInstance(const CardData& cdd, const CUID cui, const Player o) :
+    cd(&cdd), cuid(cui), owner(o) {};
   /*
   CardInstance(const CardInstance& other) :
     cd(other.cd),
     card_unique_id(other.card_unique_id),
     owner(other.owner) {};
   */
-  const CardData* getCardData() { return cd; };
-  int CUID() { return card_unique_id; };
+  const CardData& getCardData() { return *cd; };
+  CUID CUID() { return cuid; };
   Player getOwner() { return owner; };
+  uint32_t getCost() { return cd->cost; };
+  std::string name() { return cd->name; };
 };
 
 struct HeroData {
-  const int cost = 2;
+  const uint32_t cost = 2;
   const Spec spec;
-  const int ATK;
-  const int HP;
-  const int midband_level;
-  const int midband_ATK;
-  const int midband_HP;
-  const int maxband_level;
-  const int maxband_ATK;
-  const int maxband_HP;
+  const uint32_t ATK;
+  const uint32_t HP;
+  const uint32_t midband_level;
+  const uint32_t midband_ATK;
+  const uint32_t midband_HP;
+  const uint32_t maxband_level;
+  const uint32_t maxband_ATK;
+  const uint32_t maxband_HP;
   const EffectManager effects;
   const EffectManager midband_effects;
   const EffectManager maxband_effects;
@@ -132,43 +139,45 @@ struct HeroData {
 class HeroCardInstance {
   const HeroData* hd;
   Player owner;
-  int card_unique_id;
+  CUID card_unique_id;
 public:
   const HeroData* getHeroData() const { return hd; };
   Player getOwner() const { return owner; };
-  int getCUID() const { return card_unique_id; };
+  CUID getCUID() const { return card_unique_id; };
 };
 
 struct UnitEntityData {
-  const optional<CardInstance> data;
-  int ATK;
-  int HP;
+  optional<CardInstance> data;
+  uint32_t ATK;
+  uint32_t HP;
   SubtypeManager subtypes;
-  int damage;
+  uint32_t damage;
 };
 
 struct HeroEntityData {
-  const HeroCardInstance data;
-  int ATK;
-  int HP;
-  int damage;
-  int level;
+  HeroCardInstance data;
+  uint32_t ATK;
+  uint32_t HP;
+  uint32_t damage;
+  uint32_t level;
 };
 
 struct BuildingEntityData {
-  int HP;
-  int damage;
+  uint32_t HP;
+  uint32_t damage;
 };
+
+struct UpgradeEntityData {};
 
 using EntityData = variant<
                 UnitEntityData, 
                 HeroEntityData,
-                BuildingEntityData
+                BuildingEntityData,
+                UpgradeEntityData
 >;
 
 struct Entity {
   Timestamp timestamp;
-  EntityType ty;
   Player controller;
   EffectManager effects;
   EntityData data;
@@ -176,7 +185,7 @@ struct Entity {
 };
 
 struct TechBuilding {
-  int health;
+  uint32_t health;
   // 0 or lower means ded
   bool hasBeenConstructedBefore;
   bool isBeingConstructed;
@@ -197,7 +206,7 @@ class Deck {
   vector<CardInstance> d;
   bool topKnown;
   public:
-  optional<CardInstance> draw(int which);
+  optional<CardInstance> draw(uint32_t which);
   void add(CardInstance c) {
     d.push_back(c);
   };
@@ -211,30 +220,28 @@ class Deck {
 };
 
 struct HeroSlot {
-  int cuid;
-  int turnsUntilPlayable;
+  CUID cuid;
+  uint32_t turnsUntilPlayable;
 };
 
 struct PlayerData {
-  int baseHealth;
+  uint32_t baseHealth;
   std::array<TechBuilding, 3> techBuildings;
   std::array<HeroSlot, 3> heroSlots;
   Hand hand;
   Deck deck;
   Discard discard;
   Codex codex;
-  int gold;
+  uint32_t gold;
   Spec tech2Spec;
   EffectManager effects;
-  int workers;
+  uint32_t workers;
   optional<Addon> addon;
-  int addonHealth;
+  uint32_t addonHealth;
   bool addonBuiltThisTurn;
 };
 
-class EntityManager {
-  vector<Entity> e;
-};
+using EntityManager = vector<Entity>;
 
 enum class Phase : uint8_t {
   Tech,
@@ -256,32 +263,60 @@ class TimestampManager {
   };
 };
 
-struct EndGameAction {};
+struct EndOfCurrentActions {};
+struct ForfeitAction {
+  Player p;
+};
 
 struct DrawCardIndexAction {
   Player player;
-  int which;
+  uint32_t which;
 };
 
 struct DrawCardCUIDAction {
   Player player;
-  int cuid;
+  CUID cuid;
 };
 
 struct MakeWorker {
-  int cuid;
+  CUID cuid;
+};
+
+struct PlayCardFromHand {
+  CUID cuid;
+};
+
+struct PlayCardFromHandWithName {
+  std::string name;
+};
+
+struct EndMainPhase {
+  CUID squadleader = 0;
+  CUID elite = 0;
+  CUID scavenger = 0;
+  CUID technician = 0;
+  CUID lookout = 0;
+};
+
+struct TechCard {
+  CUID cuid;
 };
 
 using Action = variant<
-  EndGameAction,
+  EndOfCurrentActions,
+  ForfeitAction,
   DrawCardIndexAction,
   DrawCardCUIDAction,
-  MakeWorker
+  MakeWorker,
+  PlayCardFromHand,
+  PlayCardFromHandWithName,
+  EndMainPhase,
+  TechCard
 >;
 
 template <typename T>
 std::function<T()> make_iter_lambda(vector<T>& vec, T tdefault = T()) {
-  int curr = 0;
+  uint32_t curr = 0;
   auto vecIter = [tdefault, curr, &vec]() mutable {
     if (curr >= vec.size()) {
       return tdefault;
@@ -296,20 +331,45 @@ std::function<T()> make_iter_lambda(vector<T>& vec, T tdefault = T()) {
 class ActionManager {
   public:
   std::function<Action()> nextAction;
-  ActionManager(std::function<Action()> na = [](){ return Action(EndGameAction{}); })
-    : nextAction(na) {};
+  ActionManager(std::function<Action()> na = 
+      [](){ return Action(EndOfCurrentActions{}); }) : nextAction(na) {};
   ActionManager(vector<Action>& actions) : 
-  ActionManager(make_iter_lambda<Action>(actions, Action(EndGameAction{}))) {};
+    ActionManager(make_iter_lambda<Action>
+        (actions, Action(EndOfCurrentActions{}))) {};
 };
 
+struct NoError {};
+struct EndGameActionGameAlreadyEnded {};
+struct MakeWorkerCardNotFound {};
+struct DrawCardIndexCardNotFound {};
+struct MakeWorkerNotEnoughGold {};
+struct UnimplementedError {};
+struct IncorrectTimingError {};
+struct PlayCardFromHandCardNotFound {};
+struct PlayCardFromHandNotEnoughGold {};
+
+using ProcessResult = boost::variant<
+  NoError,
+  UnimplementedError,
+  EndGameActionGameAlreadyEnded,
+  DrawCardIndexCardNotFound,
+  MakeWorkerCardNotFound,
+  MakeWorkerNotEnoughGold,
+  PlayCardFromHandCardNotFound,
+  PlayCardFromHandNotEnoughGold,
+  IncorrectTimingError
+>;
+
 class GameData {
+  friend class mainphase_action_visitor;
   std::array<PlayerData, 2> players;
   Player activePlayer;
   Phase currentPhase;
   EntityManager entities;
-  int turn;
+  uint32_t turn;
   optional<Player> winner;
   EffectQueue q;
+  EffectQueue pendingSimultaneousEffects;
   TimestampManager cuidgen;
   TimestampManager tsGen;
   ActionManager am;
@@ -320,9 +380,64 @@ class GameData {
       return &players[1];
     }
   };
+  optional<CardInstance> findInHand(Player p, 
+      std::function<bool(CardInstance)> pred) {
+    Hand h = playerData(p)->hand;
+    auto o = std::find_if(h.begin(), h.end(), pred);
+    if (o == h.end()) {
+      return {};
+    } else {
+      return *o;
+    }
+  };
+
   void setupSingleSpec(Spec spec, Player player);
+  void forEachEntity(std::function<void(Entity)> f) {
+    std::for_each(entities.begin(), entities.end(), f);
+  };
+  void addSimultaneousEffect(Effect e) {
+    pendingSimultaneousEffects.push_back(e);
+  };
+  void enqueueSimultaneousEffects() {
+    int s = pendingSimultaneousEffects.size();
+    if (s == 0) {
+      return;
+    }
+    if (s == 1) {
+      q.push_back(pendingSimultaneousEffects[0]);
+      pendingSimultaneousEffects.clear();
+      return;
+    }
+    else {
+      // handle ordering of simultaneous effects
+      return;
+    }
+  };
+  ProcessResult calculateDerivedState();
+  ProcessResult processSBA();
+  ProcessResult processEffectQueue();
 public:
   GameData(ActionManager amm = ActionManager {}) : am(amm) {};
   static GameData SingleSpecGame(ActionManager am, Spec p1spec, Spec p2spec);
   bool hasWinner() const { return static_cast<bool>(winner); };
+  ProcessResult processActions();
+  const vector<Entity> entityList() {
+    return entities;
+  };
+  Phase getCurrentPhase() { return currentPhase; };
+  const vector<Entity> playerEntities(Player p) {
+    vector<Entity> vt;
+    std::copy_if(entities.begin(), entities.end(), vt.begin(), 
+        [p](Entity e){ return e.controller == p; });
+    return vt;
+  };
+  uint32_t getTurn() { return turn; };
+  Player getActivePlayer() { return activePlayer; };
+  uint32_t playerGold(Player p) {
+    return playerData(p)->gold;
+  };
+  uint32_t playerWorkers(Player p) {
+    return playerData(p)->workers;
+  };
+
 };

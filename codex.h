@@ -1,4 +1,5 @@
 // codex.h
+#pragma once
 
 #include <vector>
 #include <array>
@@ -15,6 +16,8 @@ using std::experimental::optional;
 using boost::variant;
 using std::tuple;
 
-#include "codex_effect.h"
-#include "codex_datatypes.h"
-#include "codex_card_data.h"
+using CUID = uint32_t;
+
+// #include "codex_effect.h"
+// #include "codex_datatypes.h"
+// #include "codex_card_data.h"
