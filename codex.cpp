@@ -176,9 +176,12 @@ public:
   };
   ProcessResult operator()(EndMainPhase& e) {
     gd->currentPhase = Phase::DiscardDraw;
-    return NoError {};
+    return gd->processActions();
   };
   ProcessResult operator()(TechCard& t) {
+    return IncorrectTimingError {};
+  };
+  ProcessResult operator()(ChooseTarget& t) {
     return IncorrectTimingError {};
   };
   /*
@@ -198,8 +201,47 @@ public:
   };
 };
 
+class draw_visitor : public boost::static_visitor<ProcessResult> {
+public:
+  GameData* gd;
+  draw_visitor(GameData* gdd) : gd(gdd) {};
+  ProcessResult operator()(DrawCardIndexAction& d) {
+    PlayerData* pd = gd->playerData(d.player);
+    optional<CardInstance> c = pd->deck.draw(d.which);
+    if (c) {
+      // move CardInstance to hand
+      pd->hand.push_back(*c);
+      return gd->processActions();
+    } else {
+      return DrawCardIndexCardNotFound {};
+    }
+  };
+  ProcessResult operator()(DrawCardCUIDAction& d) {
+    PlayerData* pd = gd->playerData(d.player);
+    Hand h = pd->hand;
+    Deck deck = pd->deck;
+    auto c = std::find_if(deck.begin(), deck.end(), [d](const CardInstance& c)
+        { return c.CUID() == d.cuid; });
+    if (c == deck.end()) {
+      return DrawCardCUIDNotFound {};
+    }
+    deck.draw(c->CUID());
+
+
+    return NoError {};
+  };
+  template <typename T>
+  ProcessResult operator()(T& t) { return DrawCardIncorrectAction {}; };
+};
+
+ProcessResult GameData::drawCard() {
+  Action a = am.nextAction();
+  draw_visitor dv = draw_visitor(this);
+  return boost::apply_visitor(dv, a);
+};
 
 ProcessResult GameData::processActions() {
+  actionCallback(this);
   if (currentPhase != Phase::Main) {
     // process stuff till we get there
     if (currentPhase == Phase::Tech) {
@@ -235,7 +277,12 @@ ProcessResult GameData::processActions() {
     }
     if (currentPhase == Phase::End) {
       // do end step stuff
-      currentPhase = Phase::Main;
+      currentPhase = Phase::Tech;
+      if (activePlayer == Player::Player1) {
+        activePlayer = Player::Player2;
+      } else {
+        activePlayer = Player::Player1;
+      }
       return processActions();
     }
   }
@@ -258,6 +305,9 @@ GameData GameData::SingleSpecGame(ActionManager am, Spec p1spec, Spec p2spec) {
   g.playerData(Player::Player2)->workers = 5;
   g.setupSingleSpec(p1spec, Player::Player1);
   g.setupSingleSpec(p2spec, Player::Player2);
+  // draw p1 cards and p2 cards 
+  // g.printDeck(Player::Player1);
+  // g.printDeck(Player::Player2);
   g.processActions();
   return g;
 };
@@ -305,10 +355,39 @@ TEST(deck) {
   };
 };
 
+TEST(forfeit) {
+  vector<Action> av { ForfeitAction {} };
+  ActionManager am { av };
+  GameData g { am };
+  g.processActions();
+  CHECK(g.hasWinner());
+  CHECK(g.getWinner() == Player::Player2);
+};
+
 TEST(starter) {
   ActionManager am {};
   GameData g = GameData::SingleSpecGame(am, Spec::Bashing, Spec::Finesse);
+  CHECK(g.getCurrentPhase() == Phase::Main);
+  CHECK(g.playerWorkers(Player::Player1) == 4);
+  CHECK(g.playerWorkers(Player::Player2) == 5);
+
+  // end turn
+  vector<Action> av { EndMainPhase {} };
+  am = ActionManager(av);
+  g.setActionManager(am);
+  g.processActions();
+  CHECK(g.getCurrentPhase() == Phase::Main);
+  CHECK(g.getActivePlayer() == Player::Player2);
   // make worker
+  av = { MakeWorker { 15 } };
+  am = ActionManager(av);
+  g.setActionManager(am);
+  auto res = g.processActions();
+  // MakeWorkerCardNotFound
+  // cause no cards in hand cause haven't done drawing yet
+  // g.printHand(Player::Player1);
+  // g.printHand(Player::Player2);
+  CHECK_EQUAL(4, res.which());
   // play unit
   // play hero
   // play spell

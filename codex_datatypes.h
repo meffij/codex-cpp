@@ -60,7 +60,7 @@ class EnumManager {
   public:
   EnumManager(std::initializer_list<T> i) : v(i) {};
   EnumManager() : v() {};
-  bool contains(T i) {
+  bool contains(T i) const {
     auto result = std::find(std::begin(v), std::end(v), i);
     if (result != std::end(v)) {
       return true;
@@ -69,13 +69,21 @@ class EnumManager {
     }
   };
 
-  bool contains(std::function<bool(T)> f) {
+  bool contains(std::function<bool(T)> f) const {
     auto result = std::find_if(std::begin(v), std::end(v), f);
     if (result != std::end(v)) {
       return true;
     } else {
       return false;
     }
+  };
+
+  void remove(std::function<bool(T)> f) {
+    std::remove_if(v, f);
+  };
+
+  void remove(T i) {
+    remove([i](T t){ return i == t; });
   };
     
 };
@@ -100,7 +108,7 @@ struct CardData {
 
 class CardInstance {
   const CardData* cd;
-  CUID cuid;;
+  CUID cuid;
   Player owner;
 public:
   CardInstance(const CardData* cdd, const CUID id, const Player o) :
@@ -113,11 +121,11 @@ public:
     card_unique_id(other.card_unique_id),
     owner(other.owner) {};
   */
-  const CardData& getCardData() { return *cd; };
-  CUID CUID() { return cuid; };
-  Player getOwner() { return owner; };
-  uint32_t getCost() { return cd->cost; };
-  std::string name() { return cd->name; };
+  const CardData& getCardData() const { return *cd; };
+  CUID CUID() const { return cuid; };
+  Player getOwner() const { return owner; };
+  uint32_t getCost() const { return cd->cost; };
+  std::string name() const { return cd->name; };
 };
 
 struct HeroData {
@@ -291,15 +299,19 @@ struct PlayCardFromHandWithName {
 };
 
 struct EndMainPhase {
-  CUID squadleader = 0;
-  CUID elite = 0;
-  CUID scavenger = 0;
-  CUID technician = 0;
-  CUID lookout = 0;
+  Timestamp squadleader = 0;
+  Timestamp elite = 0;
+  Timestamp scavenger = 0;
+  Timestamp technician = 0;
+  Timestamp lookout = 0;
 };
 
 struct TechCard {
   CUID cuid;
+};
+
+struct ChooseTarget {
+  Timestamp target;
 };
 
 using Action = variant<
@@ -311,7 +323,8 @@ using Action = variant<
   PlayCardFromHand,
   PlayCardFromHandWithName,
   EndMainPhase,
-  TechCard
+  TechCard,
+  ChooseTarget
 >;
 
 template <typename T>
@@ -347,6 +360,9 @@ struct UnimplementedError {};
 struct IncorrectTimingError {};
 struct PlayCardFromHandCardNotFound {};
 struct PlayCardFromHandNotEnoughGold {};
+struct DrawCardIncorrectAction {};
+struct DrawCardCUIDNotFound {};
+struct TechCardNotFound {};
 
 using ProcessResult = boost::variant<
   NoError,
@@ -357,11 +373,20 @@ using ProcessResult = boost::variant<
   MakeWorkerNotEnoughGold,
   PlayCardFromHandCardNotFound,
   PlayCardFromHandNotEnoughGold,
-  IncorrectTimingError
+  IncorrectTimingError,
+  DrawCardIncorrectAction,
+  DrawCardCUIDNotFound,
+  TechCardNotFound
 >;
+
+template <typename T>
+bool contains(vector<T> vec, T e) {
+  return (std::find(vec.begin(), vec.end(), e) != vec.end());
+};
 
 class GameData {
   friend class mainphase_action_visitor;
+  friend class draw_visitor;
   std::array<PlayerData, 2> players;
   Player activePlayer;
   Phase currentPhase;
@@ -392,6 +417,7 @@ class GameData {
   };
 
   void setupSingleSpec(Spec spec, Player player);
+  ProcessResult drawCard();
   void forEachEntity(std::function<void(Entity)> f) {
     std::for_each(entities.begin(), entities.end(), f);
   };
@@ -416,10 +442,22 @@ class GameData {
   ProcessResult calculateDerivedState();
   ProcessResult processSBA();
   ProcessResult processEffectQueue();
+  std::function<void(const GameData*)> actionCallback = 
+    [](const GameData* gd){ return; };
+  void reshuffle(Player p) {
+    EffectManager e = playerData(activePlayer)->effects;
+    if (p == activePlayer
+        && currentPhase == Phase::Main
+        && e.contains( Ability::HasReshuffledThisMainPhase )
+      ) { return; }
+
+    return;
+  };
 public:
   GameData(ActionManager amm = ActionManager {}) : am(amm) {};
   static GameData SingleSpecGame(ActionManager am, Spec p1spec, Spec p2spec);
   bool hasWinner() const { return static_cast<bool>(winner); };
+  optional<Player> getWinner() const { return winner; };
   ProcessResult processActions();
   const vector<Entity> entityList() {
     return entities;
@@ -438,6 +476,44 @@ public:
   };
   uint32_t playerWorkers(Player p) {
     return playerData(p)->workers;
+  };
+  void setActionManager(ActionManager amm) {
+    am = amm;
+  };
+  void setActionCallback(std::function<void(const GameData*)> cb) {
+    actionCallback = cb;
+  };
+  std::string printHand(Player p) {
+    Hand h = playerData(p)->hand;
+    std::stringstream ss;
+    for (auto c : h) {
+      ss << c.name() << " : " << c.CUID() << '\n';
+    }
+    return ss.str();
+  };
+  std::string printDeck(Player p) {
+    Hand h = playerData(p)->hand;
+    Deck deck = playerData(p)->deck;
+    std::stringstream ss;
+    std::for_each(deck.begin(), deck.end(), [&ss](const CardInstance& c){
+      ss << c.name() << " : " << c.CUID() << '\n';
+    });
+    return ss.str();
+  };
+  std::string print() { 
+    // print player 1 base
+    // print player 1 hand
+    printHand(Player::Player1);
+    // print player 1 deck
+    printDeck(Player::Player1);
+    // print player 2 base
+    // print player 2 hand
+    printHand(Player::Player2);
+    // print player 2 deck
+    printDeck(Player::Player2);
+    // print entities
+    // maybe separated by player
+    return ""; 
   };
 
 };

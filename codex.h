@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <functional>
 #include <stdint.h>
+#include <iostream>
+#include <string>
+#include <sstream>
 
 using std::vector;
 using std::experimental::optional;
