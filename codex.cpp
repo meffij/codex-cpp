@@ -1,4 +1,8 @@
+#include "codex.h"
+#include "codex_effect.h"
+#include "codex_datatypes.h"
 #include "codex_card_data.h"
+#include "make_visitor.hpp"
 #include <UnitTest++/UnitTest++.h>
 #include <iostream>
 #include <algorithm>
@@ -31,7 +35,7 @@ optional<CardInstance> Deck::draw(uint32_t which) {
     d.erase(d.begin() + which);
     return temp;
   }
-  return optional<CardInstance>();
+  return {};
 };
 
 Deck starterDeck(Player p, std::function<uint32_t()> inc) {
@@ -192,6 +196,7 @@ public:
   */
 };
 
+/*
 class unimplemented_action_visitor 
   : public boost::static_visitor<ProcessResult> {
 public:
@@ -200,7 +205,13 @@ public:
     return UnimplementedError {};
   };
 };
+*/
 
+auto test_visitor = make_visitor (
+    [](auto e){ return; }
+    );
+
+/*
 class draw_visitor : public boost::static_visitor<ProcessResult> {
 public:
   GameData* gd;
@@ -233,11 +244,38 @@ public:
   template <typename T>
   ProcessResult operator()(T& t) { return DrawCardIncorrectAction {}; };
 };
+*/
 
 ProcessResult GameData::drawCard() {
   Action a = am.nextAction();
-  draw_visitor dv = draw_visitor(this);
-  return boost::apply_visitor(dv, a);
+  return boost::apply_visitor( make_visitor<ProcessResult>(
+    [this](DrawCardIndexAction& d) -> ProcessResult {
+      PlayerData* pd = playerData(d.player);
+      optional<CardInstance> c = pd->deck.draw(d.which);
+      if (c) {
+        // move CardInstance to hand
+        pd->hand.push_back(*c);
+        return processActions();
+      } else {
+        return DrawCardIndexCardNotFound {};
+      }
+    },
+    [this](DrawCardCUIDAction& d) -> ProcessResult {
+      PlayerData* pd = playerData(d.player);
+      Hand h = pd->hand;
+      Deck deck = pd->deck;
+      auto c = std::find_if(deck.begin(), deck.end(), [d](const CardInstance& c)
+          { return c.CUID() == d.cuid; });
+      if (c == deck.end()) {
+        return DrawCardCUIDNotFound {};
+      }
+      deck.draw(c->CUID());
+
+
+      return NoError {};
+    },
+    [this](auto e) -> ProcessResult { return IncorrectTimingError {}; }
+  ), a);
 };
 
 ProcessResult GameData::processActions() {
@@ -258,6 +296,8 @@ ProcessResult GameData::processActions() {
     }
     if (currentPhase == Phase::Upkeep) {
       // trigger upkeep stuff
+      auto pd = playerData(activePlayer);
+      pd->gold += pd->workers;
       currentPhase = Phase::Main;
       return processActions();
     }
@@ -361,7 +401,7 @@ TEST(forfeit) {
   GameData g { am };
   g.processActions();
   CHECK(g.hasWinner());
-  CHECK(g.getWinner() == Player::Player2);
+  CHECK_EQUAL(*(g.getWinner()), Player::Player2);
 };
 
 TEST(starter) {
@@ -379,15 +419,18 @@ TEST(starter) {
   CHECK(g.getCurrentPhase() == Phase::Main);
   CHECK(g.getActivePlayer() == Player::Player2);
   // make worker
-  av = { MakeWorker { 15 } };
+  av = { DrawCardIndexAction { g.getActivePlayer(), 0 } };
   am = ActionManager(av);
   g.setActionManager(am);
   auto res = g.processActions();
-  // MakeWorkerCardNotFound
-  // cause no cards in hand cause haven't done drawing yet
-  // g.printHand(Player::Player1);
-  // g.printHand(Player::Player2);
-  CHECK_EQUAL(4, res.which());
+  CHECK_EQUAL(0, res.which());
+  CHECK(g.getActivePlayer() == Player::Player2);
+  av = { MakeWorker { 13 } };
+  g.setActionManager(av);
+  res = g.processActions();
+  CHECK_EQUAL(6, g.playerWorkers(Player::Player2));
+  CHECK_EQUAL(0, res.which());
+  CHECK_EQUAL(g.getActivePlayer(), Player::Player2);
   // play unit
   // play hero
   // play spell

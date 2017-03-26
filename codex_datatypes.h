@@ -1,10 +1,21 @@
 // codex_datatypes.h
 #pragma once
+#include "codex.h"
 #include "codex_effect.h"
+#include "make_visitor.hpp"
 
 enum class Player : bool {
   Player1,
   Player2,
+};
+
+std::ostream& operator<<(std::ostream& out, const Player& p) {
+  if (p == Player::Player1) {
+    out << "Player 1";
+  } else {
+    out << "Player 2";
+  }
+  return out;
 };
 
 enum class Color : uint8_t {

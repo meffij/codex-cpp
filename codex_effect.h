@@ -10,6 +10,7 @@ class Timestamp {
   inline bool operator<(const Timestamp& tt) const { return t < tt.t; };
   explicit operator int() const { return t; };
   CUID asCUID() { return t; };
+  bool operator==(const Timestamp& rhs) const { return t == rhs.t; }
 };
 
 // layer notes
@@ -120,6 +121,13 @@ public:
   Effect(Ability a, int t = 0) : ability(a), timestamp(t) {};
   Effect(Ability a, Timestamp t, Timestamp s) 
     : ability(a), timestamp(t), source(s) {};
+  bool operator==(const Effect& rhs) const {
+    return ability == rhs.ability
+      && timestamp == rhs.timestamp
+      && source == rhs.source
+      && layer == rhs.layer
+      ;
+  }
 };
 
 constexpr inline bool countsAsWrittenAbility(Ability a) {

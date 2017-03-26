@@ -1,5 +1,7 @@
 // codex_card_data.h
 #pragma once
+#include "codex.h"
+#include "codex_effect.h"
 #include "codex_datatypes.h"
 namespace CodexCardData {
   const CardData TimelyMessenger {
