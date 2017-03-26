@@ -401,7 +401,7 @@ TEST(forfeit) {
   GameData g { am };
   g.processActions();
   CHECK(g.hasWinner());
-  CHECK_EQUAL(*(g.getWinner()), Player::Player2);
+  CHECK(*(g.getWinner()) == Player::Player2);
 };
 
 TEST(starter) {
