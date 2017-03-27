@@ -97,11 +97,11 @@ public:
     return NoError{};
   };
   ProcessResult operator()(ForfeitAction& f) {
-    if (f.p == Player::Player1) {
-      gd->winner = Player::Player2;
+    if (f.p == +Player::Player1) {
+      gd->winner = +Player::Player2;
       return NoError{};
     } else {
-      gd->winner = Player::Player1;
+      gd->winner = +Player::Player1;
       return NoError{};
     }
   };
@@ -280,6 +280,10 @@ ProcessResult GameData::drawCard() {
 
 ProcessResult GameData::processActions() {
   actionCallback(this);
+  if (!q.empty()) {
+    // process action queue
+    return UnimplementedError {};
+  }
   if (currentPhase != Phase::Main) {
     // process stuff till we get there
     if (currentPhase == Phase::Tech) {
@@ -318,16 +322,13 @@ ProcessResult GameData::processActions() {
     if (currentPhase == Phase::End) {
       // do end step stuff
       currentPhase = Phase::Tech;
-      if (activePlayer == Player::Player1) {
+      if (activePlayer == +Player::Player1) {
         activePlayer = Player::Player2;
       } else {
         activePlayer = Player::Player1;
       }
       return processActions();
     }
-  }
-  if (!q.empty()) {
-    // process action queue
   }
   mainphase_action_visitor av = mainphase_action_visitor(this);
   auto na = am.nextAction();
@@ -358,7 +359,7 @@ void GameData::setupSingleSpec(Spec spec, Player player) {
   CUID heroCUID = cuidgen.next().asCUID();
   p->heroSlots[0].cuid = heroCUID;
   p->heroSlots[0].turnsUntilPlayable = 0;
-  if (spec == Spec::Bashing || spec == Spec::Finesse) {
+  if (spec == +Spec::Bashing || spec == +Spec::Finesse) {
     Deck d = starterDeck(player, [this](){ return cuidgen.next().asCUID(); });
     p->deck = d;
   } else {
@@ -396,12 +397,12 @@ TEST(deck) {
 };
 
 TEST(forfeit) {
-  vector<Action> av { ForfeitAction {} };
+  vector<Action> av { ForfeitAction {Player::Player1} };
   ActionManager am { av };
   GameData g { am };
   g.processActions();
   CHECK(g.hasWinner());
-  CHECK(*(g.getWinner()) == Player::Player2);
+  CHECK(*(g.getWinner()) == +Player::Player2);
 };
 
 TEST(starter) {
@@ -417,20 +418,20 @@ TEST(starter) {
   g.setActionManager(am);
   g.processActions();
   CHECK(g.getCurrentPhase() == Phase::Main);
-  CHECK(g.getActivePlayer() == Player::Player2);
+  CHECK(g.getActivePlayer() == +Player::Player2);
   // make worker
   av = { DrawCardIndexAction { g.getActivePlayer(), 0 } };
   am = ActionManager(av);
   g.setActionManager(am);
   auto res = g.processActions();
   CHECK_EQUAL(0, res.which());
-  CHECK(g.getActivePlayer() == Player::Player2);
+  CHECK(g.getActivePlayer() == +Player::Player2);
   av = { MakeWorker { 13 } };
   g.setActionManager(av);
   res = g.processActions();
   CHECK_EQUAL(6, g.playerWorkers(Player::Player2));
   CHECK_EQUAL(0, res.which());
-  CHECK_EQUAL(g.getActivePlayer(), Player::Player2);
+  CHECK_EQUAL(g.getActivePlayer(), +Player::Player2);
   // play unit
   // play hero
   // play spell

@@ -3,14 +3,22 @@
 #include "codex.h"
 #include "codex_effect.h"
 #include "make_visitor.hpp"
+#include "enum.h"
 
+/*
 enum class Player : bool {
   Player1,
   Player2,
 };
+*/
+
+BETTER_ENUM(Player, bool, 
+  Player1, 
+  Player2
+);
 
 std::ostream& operator<<(std::ostream& out, const Player& p) {
-  if (p == Player::Player1) {
+  if (p == +Player::Player1) {
     out << "Player 1";
   } else {
     out << "Player 2";
@@ -18,40 +26,40 @@ std::ostream& operator<<(std::ostream& out, const Player& p) {
   return out;
 };
 
-enum class Color : uint8_t {
-  Neutral,
-  Red,
-  Green,
-};
+BETTER_ENUM(Color, uint8_t, 
+  Neutral, 
+  Red, 
+  Green
+);
 
-enum class CardType : uint8_t {
-  Unit,
-  Spell,
-  Building,
-  Upgrade,
-};
+BETTER_ENUM(CardType, uint8_t, 
+  Unit, 
+  Spell, 
+  Building, 
+  Upgrade
+);
 
-enum class EntityType : uint8_t {
-  Unit,
-  Hero,
-  Building,
-  Upgrade,
-};
+BETTER_ENUM(EntityType, uint8_t, 
+  Unit, 
+  Hero, 
+  Building, 
+  Upgrade
+);
 
-enum class TechLevel : uint8_t {
-  Tech0,
-  Tech1,
-  Tech2,
-  Tech3,
-};
+BETTER_ENUM(TechLevel, uint8_t, 
+  Tech0, 
+  Tech1, 
+  Tech2, 
+  Tech3
+); 
 
-enum class Spec : uint8_t {
-  None,
-  Bashing,
-  Finesse,
-  // more
-};
-enum class Subtype : uint8_t {
+BETTER_ENUM(Spec, uint8_t, 
+  None, 
+  Bashing, 
+  Finesse
+);
+
+BETTER_ENUM(Subtype, uint8_t, 
   Buff,
   Burn,
   CuteAnimal,
@@ -62,8 +70,8 @@ enum class Subtype : uint8_t {
   Mercenary,
   Ninja,
   Ultimate,
-  Virtuoso,
-};
+  Virtuoso 
+);
 
 template <class T>
 class EnumManager {
@@ -252,7 +260,7 @@ struct PlayerData {
   Discard discard;
   Codex codex;
   uint32_t gold;
-  Spec tech2Spec;
+  Spec tech2Spec = Spec::Bashing;
   EffectManager effects;
   uint32_t workers;
   optional<Addon> addon;
@@ -399,7 +407,7 @@ class GameData {
   friend class mainphase_action_visitor;
   friend class draw_visitor;
   std::array<PlayerData, 2> players;
-  Player activePlayer;
+  Player activePlayer = Player::Player1;
   Phase currentPhase;
   EntityManager entities;
   uint32_t turn;
@@ -410,7 +418,7 @@ class GameData {
   TimestampManager tsGen;
   ActionManager am;
   PlayerData* playerData(Player p) {
-    if (p == Player::Player1) {
+    if (p == +Player::Player1) {
       return &players[0];
     } else {
       return &players[1];
